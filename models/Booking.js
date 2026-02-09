@@ -46,7 +46,6 @@ const bookingSchema = new mongoose.Schema({
 });
 
 // Add indexes
-bookingSchema.index({ bookingToken: 1 });
 bookingSchema.index({ scheduleId: 1 });
 bookingSchema.index({ email: 1 });
 
