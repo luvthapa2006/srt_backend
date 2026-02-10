@@ -11,38 +11,57 @@ function generateBookingToken() {
   return `${prefix}-${timestamp}${random}`;
 }
 
-// @route   GET /api/bookings
-// @desc    Get all bookings (Admin only)
+// ========================================
+// IMPORTANT: Route Order Matters!
+// Specific routes (like /stats/revenue, /reset-stats) must come BEFORE
+// parameter routes (like /:token, /:bookingToken/cancel)
+// ========================================
+
+// @route   GET /api/bookings/stats/revenue
+// @desc    Get booking statistics (Admin only)
 // @access  Private
-router.get('/', async (req, res) => {
+router.get('/stats/revenue', async (req, res) => {
   try {
-    const bookings = await Booking.find({})
-      .populate('scheduleId')
-      .sort({ createdAt: -1 });
+    const bookings = await Booking.find({ status: 'confirmed' });
     
-    res.json(bookings);
+    const totalRevenue = bookings.reduce((sum, booking) => sum + booking.totalAmount, 0);
+    const totalBookings = bookings.length;
+
+    res.json({
+      totalRevenue,
+      totalBookings
+    });
   } catch (error) {
-    console.error('Error fetching bookings:', error);
+    console.error('Error fetching stats:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
-// @route   GET /api/bookings/:token
-// @desc    Get booking by token
-// @access  Public
-router.get('/:token', async (req, res) => {
+// @route   POST /api/bookings/reset-stats
+// @desc    Reset all bookings and clear seats (Development/Testing only)
+// @access  Private (Add authentication in production!)
+router.post('/reset-stats', async (req, res) => {
   try {
-    const booking = await Booking.findOne({ bookingToken: req.params.token })
-      .populate('scheduleId');
-
-    if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
-    }
-
-    res.json(booking);
+    console.log('⚠️ Resetting all bookings and clearing seats...');
+    
+    // Delete all bookings
+    const deleteResult = await Booking.deleteMany({});
+    console.log(`Deleted ${deleteResult.deletedCount} bookings`);
+    
+    // Clear all booked seats from all schedules
+    const updateResult = await Schedule.updateMany({}, { $set: { bookedSeats: [] } });
+    console.log(`Cleared seats from ${updateResult.modifiedCount} schedules`);
+    
+    res.json({
+      message: 'Stats reset successfully',
+      totalRevenue: 0,
+      totalBookings: 0,
+      deletedBookings: deleteResult.deletedCount,
+      clearedSchedules: updateResult.modifiedCount
+    });
   } catch (error) {
-    console.error('Error fetching booking:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Error resetting stats:', error);
+    res.status(500).json({ message: 'Failed to reset stats', error: error.message });
   }
 });
 
@@ -108,22 +127,92 @@ router.post('/', async (req, res) => {
   }
 });
 
-// @route   GET /api/bookings/stats/revenue
-// @desc    Get booking statistics (Admin only)
+// @route   GET /api/bookings
+// @desc    Get all bookings (Admin only)
 // @access  Private
-router.get('/stats/revenue', async (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const bookings = await Booking.find({ status: 'confirmed' });
+    const bookings = await Booking.find({})
+      .populate('scheduleId')
+      .sort({ createdAt: -1 });
     
-    const totalRevenue = bookings.reduce((sum, booking) => sum + booking.totalAmount, 0);
-    const totalBookings = bookings.length;
-
-    res.json({
-      totalRevenue,
-      totalBookings
-    });
+    res.json(bookings);
   } catch (error) {
-    console.error('Error fetching stats:', error);
+    console.error('Error fetching bookings:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   PUT /api/bookings/:bookingToken/cancel
+// @desc    Cancel a booking and release seats
+// @access  Public/Private
+router.put('/:bookingToken/cancel', async (req, res) => {
+  try {
+    const { bookingToken } = req.params;
+    
+    console.log(`Attempting to cancel booking: ${bookingToken}`);
+    
+    // Find booking by token
+    const booking = await Booking.findOne({ bookingToken });
+    
+    if (!booking) {
+      console.log(`Booking not found: ${bookingToken}`);
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+    
+    // Check if already cancelled
+    if (booking.status === 'cancelled') {
+      console.log(`Booking already cancelled: ${bookingToken}`);
+      return res.status(400).json({ message: 'Booking is already cancelled' });
+    }
+    
+    // Update booking status to cancelled
+    booking.status = 'cancelled';
+    await booking.save();
+    console.log(`Booking status updated to cancelled: ${bookingToken}`);
+    
+    // Release seats from schedule
+    const schedule = await Schedule.findById(booking.scheduleId);
+    if (schedule) {
+      // Remove booked seats from schedule
+      const seatsToRelease = booking.seatNumbers;
+      schedule.bookedSeats = schedule.bookedSeats.filter(
+        seat => !seatsToRelease.includes(seat)
+      );
+      await schedule.save();
+      console.log(`Released seats from schedule: ${seatsToRelease.join(', ')}`);
+    } else {
+      console.warn(`Schedule not found for booking: ${booking.scheduleId}`);
+    }
+    
+    // Return populated booking
+    const updatedBooking = await Booking.findById(booking._id)
+      .populate('scheduleId');
+    
+    console.log(`✅ Booking cancelled successfully: ${bookingToken}`);
+    res.json(updatedBooking);
+    
+  } catch (error) {
+    console.error('Error cancelling booking:', error);
+    res.status(500).json({ message: 'Failed to cancel booking', error: error.message });
+  }
+});
+
+// @route   GET /api/bookings/:token
+// @desc    Get booking by token
+// @access  Public
+router.get('/:token', async (req, res) => {
+  try {
+    const booking = await Booking.findOne({ bookingToken: req.params.token })
+      .populate('scheduleId');
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    res.json(booking);
+  } catch (error) {
+    console.error('Error fetching booking:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
