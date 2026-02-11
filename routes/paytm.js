@@ -52,21 +52,26 @@ router.get('/config', (req, res) => {
   try {
     const merchantId = process.env.PAYTM_MID || process.env.PAYTM_MERCHANT_ID;
     
-    // Return Paytm configuration
+    // Return Paytm configuration (without sensitive keys)
     res.json({
-      merchantId: merchantId,
-      merchantKey: process.env.PAYTM_MERCHANT_KEY,
-      websiteName: process.env.PAYTM_WEBSITE || 'WEBSTAGING',
-      industryType: process.env.PAYTM_INDUSTRY_TYPE || 'Retail',
-      channelId: process.env.PAYTM_CHANNEL_ID || 'WEB',
-      callbackUrl: process.env.PAYTM_CALLBACK_URL || `${process.env.BACKEND_URL}/api/paytm/callback`,
-      // For testing/development
-      enabled: process.env.PAYTM_ENABLED === 'true' || true,
-      mode: process.env.PAYTM_MODE || 'test' // 'test' or 'production'
+      success: true,
+      data: {
+        merchantId: merchantId,
+        websiteName: process.env.PAYTM_WEBSITE || 'WEBSTAGING',
+        industryType: process.env.PAYTM_INDUSTRY_TYPE || 'Retail',
+        channelId: process.env.PAYTM_CHANNEL_ID || 'WEB',
+        callbackUrl: process.env.PAYTM_CALLBACK_URL || `${process.env.BACKEND_URL}/api/paytm/callback`,
+        enabled: process.env.PAYTM_ENABLED === 'true' || true,
+        mode: process.env.PAYTM_MODE || 'test'
+      }
     });
   } catch (error) {
     console.error('Error fetching Paytm config:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error', 
+      error: error.message 
+    });
   }
 });
 
@@ -97,7 +102,7 @@ router.post('/initiate', async (req, res) => {
       });
       
       await booking.save();
-      console.log('Booking created:', booking._id);
+      console.log('✅ Booking created:', booking._id);
       
       bookingId = booking._id.toString();
       amount = booking.totalAmount;
@@ -178,7 +183,7 @@ router.post('/initiate', async (req, res) => {
     };
     await booking.save();
     
-    console.log('Booking updated with order ID:', orderId);
+    console.log('✅ Booking updated with order ID:', orderId);
     console.log('Payment URL:', paytmUrl);
 
     res.json({
@@ -190,7 +195,7 @@ router.post('/initiate', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error initiating payment:', error);
+    console.error('❌ Error initiating payment:', error);
     res.status(500).json({ 
       success: false,
       message: 'Failed to initiate payment', 
@@ -199,14 +204,9 @@ router.post('/initiate', async (req, res) => {
   }
 });
 
-// @route   GET /api/paytm/test-payment
-// @desc    Test payment page for development
-// @access  Public
-router.get('/test-payment', (req, res) => {
-  const { orderId, amount, mid } = req.query;
-  const backendUrl = process.env.BACKEND_URL || 'https://srt-backend-a5m9.onrender.com';
-  
-  res.send(`
+// Helper function to render test payment page
+function renderTestPaymentPage(orderId, amount, mid, backendUrl) {
+  return `
     <!DOCTYPE html>
     <html>
     <head>
@@ -242,73 +242,81 @@ router.get('/test-payment', (req, res) => {
           color: #333;
           padding: 5px 15px;
           border-radius: 20px;
-          font-size: 14px;
-          font-weight: bold;
+          font-weight: 600;
+          font-size: 12px;
           margin-bottom: 30px;
         }
         .info {
           background: #f8f9fa;
-          padding: 20px;
           border-radius: 10px;
+          padding: 20px;
           margin-bottom: 30px;
         }
         .info-row {
           display: flex;
           justify-content: space-between;
-          padding: 10px 0;
-          border-bottom: 1px solid #e0e0e0;
+          align-items: center;
+          padding: 12px 0;
+          border-bottom: 1px solid #e9ecef;
         }
-        .info-row:last-child { border-bottom: none; }
-        .label { color: #666; font-size: 14px; }
-        .value { 
-          font-weight: 600; 
-          color: #333;
-          font-size: 16px;
+        .info-row:last-child {
+          border-bottom: none;
+        }
+        .label {
+          color: #6c757d;
+          font-weight: 500;
+        }
+        .value {
+          color: #212529;
+          font-weight: 600;
         }
         .amount {
           font-size: 24px;
-          color: #667eea;
+          color: #28a745;
         }
         .buttons {
-          display: flex;
+          display: grid;
           gap: 15px;
+          margin-bottom: 20px;
         }
         button {
-          flex: 1;
           padding: 15px;
           border: none;
           border-radius: 10px;
           font-size: 16px;
           font-weight: 600;
           cursor: pointer;
-          transition: all 0.3s ease;
+          transition: all 0.3s;
         }
         .btn-success {
-          background: #10b981;
+          background: #28a745;
           color: white;
         }
         .btn-success:hover {
-          background: #059669;
+          background: #218838;
           transform: translateY(-2px);
-          box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+          box-shadow: 0 5px 15px rgba(40,167,69,0.3);
         }
         .btn-fail {
-          background: #ef4444;
+          background: #dc3545;
           color: white;
         }
         .btn-fail:hover {
-          background: #dc2626;
+          background: #c82333;
           transform: translateY(-2px);
-          box-shadow: 0 5px 15px rgba(239, 68, 68, 0.4);
+          box-shadow: 0 5px 15px rgba(220,53,69,0.3);
         }
         .note {
-          margin-top: 20px;
-          padding: 15px;
           background: #fff3cd;
-          border-left: 4px solid #ffc107;
+          border: 1px solid #ffc107;
           border-radius: 5px;
+          padding: 15px;
           font-size: 14px;
           color: #856404;
+        }
+        .note strong {
+          display: block;
+          margin-bottom: 5px;
         }
       </style>
     </head>
@@ -400,7 +408,31 @@ router.get('/test-payment', (req, res) => {
       </script>
     </body>
     </html>
-  `);
+  `;
+}
+
+// @route   GET /api/paytm/test-payment
+// @desc    Test payment page for development (GET method)
+// @access  Public
+router.get('/test-payment', (req, res) => {
+  const { orderId, amount, mid } = req.query;
+  const backendUrl = process.env.BACKEND_URL || 'https://srt-backend-a5m9.onrender.com';
+  
+  console.log('🧪 Test payment page accessed (GET):', { orderId, amount, mid });
+  
+  res.send(renderTestPaymentPage(orderId, amount, mid, backendUrl));
+});
+
+// @route   POST /api/paytm/test-payment
+// @desc    Test payment page for development (POST method) - FIXED
+// @access  Public
+router.post('/test-payment', (req, res) => {
+  const { orderId, amount, mid } = req.body;
+  const backendUrl = process.env.BACKEND_URL || 'https://srt-backend-a5m9.onrender.com';
+  
+  console.log('🧪 Test payment page accessed (POST):', { orderId, amount, mid });
+  
+  res.send(renderTestPaymentPage(orderId, amount, mid, backendUrl));
 });
 
 // @route   POST /api/paytm/callback
@@ -410,7 +442,7 @@ router.post('/callback', async (req, res) => {
   try {
     const { ORDERID, TXNID, STATUS, RESPCODE, RESPMSG } = req.body;
 
-    console.log('Paytm Callback Received:', {
+    console.log('💳 Paytm Callback Received:', {
       ORDERID,
       TXNID,
       STATUS,
@@ -419,7 +451,7 @@ router.post('/callback', async (req, res) => {
     });
 
     if (!ORDERID) {
-      console.error('Invalid callback: ORDERID missing');
+      console.error('❌ Invalid callback: ORDERID missing');
       return res.status(400).json({ 
         message: 'Invalid callback data: ORDERID missing' 
       });
@@ -429,7 +461,7 @@ router.post('/callback', async (req, res) => {
     const booking = await Booking.findOne({ 'paymentDetails.orderId': ORDERID });
     
     if (!booking) {
-      console.error('Booking not found for order:', ORDERID);
+      console.error('❌ Booking not found for order:', ORDERID);
       return res.status(404).json({ 
         message: 'Booking not found for this order' 
       });
@@ -444,20 +476,20 @@ router.post('/callback', async (req, res) => {
       booking.paymentDetails.paidAt = new Date();
       await booking.save();
       
-      console.log('Payment successful for booking:', booking.bookingToken);
+      console.log('✅ Payment successful for booking:', booking.bookingToken);
 
       return res.redirect(`${frontendUrl}/payment.html?status=success&orderId=${ORDERID}&txnId=${TXNID}&bookingToken=${booking.bookingToken}`);
     } else {
       booking.status = 'cancelled';
       await booking.save();
       
-      console.log('Payment failed for booking:', booking.bookingToken, 'Reason:', RESPMSG);
+      console.log('❌ Payment failed for booking:', booking.bookingToken, 'Reason:', RESPMSG);
 
       return res.redirect(`${frontendUrl}/payment.html?status=failed&message=${encodeURIComponent(RESPMSG || 'Payment failed')}`);
     }
 
   } catch (error) {
-    console.error('Error in payment callback:', error);
+    console.error('❌ Error in payment callback:', error);
     const frontendUrl = process.env.FRONTEND_URL || 'https://ramjibus.netlify.app';
     return res.redirect(`${frontendUrl}/payment.html?status=error&message=${encodeURIComponent('Payment processing failed')}`);
   }
