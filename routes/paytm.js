@@ -77,34 +77,57 @@ router.post('/initiate', async (req, res) => {
   try {
     console.log('=== PAYMENT INITIATE DEBUG ===');
     console.log('Request body:', JSON.stringify(req.body, null, 2));
-    console.log('Content-Type:', req.headers['content-type']);
-    const { bookingId, amount, customerInfo } = req.body;
-
-    console.log('Payment initiation request:', { bookingId, amount, customerInfo });
-
-    // Validate request
-    if (!bookingId || !amount) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'Missing required fields: bookingId and amount are required' 
+    
+    let bookingId, amount, customerInfo, booking;
+    
+    // Check if this is a direct booking request or payment initiation
+    if (req.body.scheduleId && req.body.seatNumbers) {
+      // CREATE BOOKING FIRST
+      console.log('Creating booking from payment request...');
+      
+      booking = new Booking({
+        bookingToken: `BK${Date.now()}${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+        scheduleId: req.body.scheduleId,
+        customerName: req.body.customerName,
+        email: req.body.email,
+        phone: req.body.phone,
+        seatNumbers: req.body.seatNumbers,
+        totalAmount: req.body.totalAmount,
+        status: 'pending'
       });
-    }
-const mongoose = require('mongoose');
-
-// ... in the route handler
-if (!mongoose.Types.ObjectId.isValid(bookingId)) {
-  return res.status(400).json({ 
-    success: false,
-    message: 'Invalid booking ID format' 
-  });
-}
-    // Check if booking exists
-    const booking = await Booking.findById(bookingId);
-    if (!booking) {
-      return res.status(404).json({ 
-        success: false,
-        message: 'Booking not found' 
-      });
+      
+      await booking.save();
+      console.log('Booking created:', booking._id);
+      
+      bookingId = booking._id.toString();
+      amount = booking.totalAmount;
+      customerInfo = {
+        email: booking.email,
+        phone: booking.phone
+      };
+      
+    } else {
+      // EXISTING BOOKING - just initiate payment
+      bookingId = req.body.bookingId;
+      amount = req.body.amount;
+      customerInfo = req.body.customerInfo;
+      
+      // Validate request
+      if (!bookingId || !amount) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Missing required fields: bookingId and amount are required' 
+        });
+      }
+      
+      // Check if booking exists
+      booking = await Booking.findById(bookingId);
+      if (!booking) {
+        return res.status(404).json({ 
+          success: false,
+          message: 'Booking not found' 
+        });
+      }
     }
 
     // Generate order ID
@@ -112,19 +135,20 @@ if (!mongoose.Types.ObjectId.isValid(bookingId)) {
     
     console.log('Generated order ID:', orderId);
 
-    // For now, return mock payment initiation data
+    // Rest of your existing code...
     const merchantId = process.env.PAYTM_MID || process.env.PAYTM_MERCHANT_ID;
     const backendUrl = process.env.BACKEND_URL || 'https://srt-backend-a5m9.onrender.com';
     
     const paymentData = {
       orderId: orderId,
       amount: amount,
+      bookingId: bookingId,  // Add this
+      bookingToken: booking.bookingToken,  // Add this
       customerInfo: {
         custId: customerInfo?.email || booking.email,
         mobile: customerInfo?.phone || booking.phone,
         email: customerInfo?.email || booking.email
       },
-      // In production, generate actual checksum using Paytm SDK
       txnToken: `TXN_TOKEN_${Date.now()}`,
       paytmParams: {
         mid: merchantId,
