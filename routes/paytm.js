@@ -75,6 +75,9 @@ router.get('/config', (req, res) => {
 // @access  Public
 router.post('/initiate', async (req, res) => {
   try {
+    console.log('=== PAYMENT INITIATE DEBUG ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    console.log('Content-Type:', req.headers['content-type']);
     const { bookingId, amount, customerInfo } = req.body;
 
     console.log('Payment initiation request:', { bookingId, amount, customerInfo });
@@ -86,7 +89,15 @@ router.post('/initiate', async (req, res) => {
         message: 'Missing required fields: bookingId and amount are required' 
       });
     }
+const mongoose = require('mongoose');
 
+// ... in the route handler
+if (!mongoose.Types.ObjectId.isValid(bookingId)) {
+  return res.status(400).json({ 
+    success: false,
+    message: 'Invalid booking ID format' 
+  });
+}
     // Check if booking exists
     const booking = await Booking.findById(bookingId);
     if (!booking) {
