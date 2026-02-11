@@ -20,9 +20,11 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 const scheduleRoutes = require('./routes/schedules');
 const bookingRoutes = require('./routes/bookings');
+const paytmRoutes = require('./routes/paytm');
 
 app.use('/api/schedules', scheduleRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/paytm', paytmRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
@@ -41,6 +43,7 @@ app.get('/', (req, res) => {
     endpoints: {
       schedules: '/api/schedules',
       bookings: '/api/bookings',
+      paytm: '/api/paytm',
       health: '/api/health'
     }
   });
