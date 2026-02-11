@@ -2,14 +2,59 @@ const express = require('express');
 const router = express.Router();
 const Booking = require('../models/Booking');
 
+// @route   GET /api/paytm/env-check
+// @desc    Check environment variables (for debugging)
+// @access  Public (Remove in production!)
+router.get('/env-check', (req, res) => {
+  res.json({
+    message: 'Environment Variables Check',
+    variables: {
+      PAYTM_MID: process.env.PAYTM_MID ? '✅ Set (***' + process.env.PAYTM_MID.slice(-4) + ')' : '❌ Not set',
+      PAYTM_MERCHANT_ID: process.env.PAYTM_MERCHANT_ID ? '✅ Set (***' + process.env.PAYTM_MERCHANT_ID.slice(-4) + ')' : '❌ Not set',
+      PAYTM_MERCHANT_KEY: process.env.PAYTM_MERCHANT_KEY ? '✅ Set (hidden)' : '❌ Not set',
+      PAYTM_WEBSITE: process.env.PAYTM_WEBSITE || '❌ Not set',
+      PAYTM_CALLBACK_URL: process.env.PAYTM_CALLBACK_URL || '❌ Not set',
+      PAYTM_ENABLED: process.env.PAYTM_ENABLED || '❌ Not set',
+      PAYTM_MODE: process.env.PAYTM_MODE || '❌ Not set',
+      BACKEND_URL: process.env.BACKEND_URL || '❌ Not set',
+      FRONTEND_URL: process.env.FRONTEND_URL || '❌ Not set',
+      MONGODB_URI: process.env.MONGODB_URI ? '✅ Set (hidden)' : '❌ Not set',
+      PORT: process.env.PORT || '❌ Not set',
+      NODE_ENV: process.env.NODE_ENV || '❌ Not set'
+    },
+    note: 'Remove this endpoint before production!'
+  });
+});
+
+// @route   GET /api/paytm/test
+// @desc    Test endpoint to verify Paytm routes are working
+// @access  Public
+router.get('/test', (req, res) => {
+  const merchantId = process.env.PAYTM_MID || process.env.PAYTM_MERCHANT_ID;
+  
+  res.json({
+    message: 'Paytm routes are working',
+    timestamp: new Date().toISOString(),
+    config: {
+      merchantId: merchantId ? '***' + merchantId.slice(-4) : 'Not configured',
+      website: process.env.PAYTM_WEBSITE || 'WEBSTAGING',
+      callbackUrl: process.env.PAYTM_CALLBACK_URL || 'Not configured',
+      mode: process.env.PAYTM_MODE || 'test',
+      enabled: process.env.PAYTM_ENABLED || 'Not set'
+    }
+  });
+});
+
 // @route   GET /api/paytm/config
 // @desc    Get Paytm configuration for frontend
 // @access  Public
 router.get('/config', (req, res) => {
   try {
+    const merchantId = process.env.PAYTM_MID || process.env.PAYTM_MERCHANT_ID;
+    
     // Return Paytm configuration
     res.json({
-      merchantId: process.env.PAYTM_MID || process.env.PAYTM_MERCHANT_ID,
+      merchantId: merchantId,
       merchantKey: process.env.PAYTM_MERCHANT_KEY,
       websiteName: process.env.PAYTM_WEBSITE || 'WEBSTAGING',
       industryType: process.env.PAYTM_INDUSTRY_TYPE || 'Retail',
@@ -56,11 +101,6 @@ router.post('/initiate', async (req, res) => {
     
     console.log('Generated order ID:', orderId);
 
-    // In a real implementation, you would:
-    // 1. Generate checksum using Paytm's SDK
-    // 2. Create payment request parameters
-    // 3. Store order details in database
-
     // For now, return mock payment initiation data
     const merchantId = process.env.PAYTM_MID || process.env.PAYTM_MERCHANT_ID;
     const backendUrl = process.env.BACKEND_URL || 'https://srt-backend-a5m9.onrender.com';
@@ -98,7 +138,6 @@ router.post('/initiate', async (req, res) => {
       success: true,
       message: 'Payment initiated successfully',
       data: paymentData,
-      // Flag to indicate this is a test/mock response
       isTestMode: process.env.PAYTM_MODE === 'test',
       note: process.env.PAYTM_MODE === 'test' ? 'Running in TEST mode. Integrate actual Paytm SDK for production.' : undefined
     });
@@ -128,11 +167,6 @@ router.post('/callback', async (req, res) => {
       RESPMSG
     });
 
-    // In production:
-    // 1. Verify checksum
-    // 2. Validate transaction with Paytm server
-    // 3. Update booking status
-
     if (!ORDERID) {
       console.error('Invalid callback: ORDERID missing');
       return res.status(400).json({ 
@@ -161,7 +195,6 @@ router.post('/callback', async (req, res) => {
       
       console.log('Payment successful for booking:', booking.bookingToken);
 
-      // Redirect to success page
       return res.redirect(`${frontendUrl}/booking-success?token=${booking.bookingToken}`);
     } else {
       booking.status = 'cancelled';
@@ -169,7 +202,6 @@ router.post('/callback', async (req, res) => {
       
       console.log('Payment failed for booking:', booking.bookingToken, 'Reason:', RESPMSG);
 
-      // Redirect to failure page
       return res.redirect(`${frontendUrl}/booking-failed?reason=${encodeURIComponent(RESPMSG || 'Payment failed')}`);
     }
 
@@ -191,7 +223,6 @@ router.get('/status/:orderId', async (req, res) => {
 
     console.log('Checking payment status for order:', orderId);
 
-    // Find booking by order ID
     const booking = await Booking.findOne({ 'paymentDetails.orderId': orderId })
       .populate('scheduleId');
 
@@ -224,7 +255,7 @@ router.get('/status/:orderId', async (req, res) => {
 });
 
 // @route   POST /api/paytm/verify
-// @desc    Verify payment transaction with Paytm server
+// @desc    Verify payment transaction
 // @access  Public
 router.post('/verify', async (req, res) => {
   try {
@@ -239,8 +270,6 @@ router.post('/verify', async (req, res) => {
       });
     }
 
-    // In production, verify with Paytm's transaction status API
-    // For now, check database
     const booking = await Booking.findOne({ 'paymentDetails.orderId': orderId });
 
     if (!booking) {
@@ -267,22 +296,6 @@ router.post('/verify', async (req, res) => {
       error: error.message 
     });
   }
-});
-
-// @route   GET /api/paytm/test
-// @desc    Test endpoint to verify Paytm routes are working
-// @access  Public
-router.get('/test', (req, res) => {
-  res.json({
-    message: 'Paytm routes are working',
-    timestamp: new Date().toISOString(),
-    config: {
-      merchantId: process.env.PAYTM_MID ? '***' + process.env.PAYTM_MID.slice(-4) : 'Not configured',
-      website: process.env.PAYTM_WEBSITE || 'Not configured',
-      callbackUrl: process.env.PAYTM_CALLBACK_URL || 'Not configured',
-      mode: process.env.PAYTM_MODE || 'test'
-    }
-  });
 });
 
 module.exports = router;
