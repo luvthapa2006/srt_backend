@@ -135,21 +135,32 @@ router.post('/initiate', async (req, res) => {
     
     console.log('Generated order ID:', orderId);
 
-    // Rest of your existing code...
+    // Get configuration
     const merchantId = process.env.PAYTM_MID || process.env.PAYTM_MERCHANT_ID;
     const backendUrl = process.env.BACKEND_URL || 'https://srt-backend-a5m9.onrender.com';
+    const paytmMode = process.env.PAYTM_MODE || 'test';
+    
+    // Determine Paytm URL based on mode
+    const paytmUrl = paytmMode === 'test' 
+      ? `${backendUrl}/api/paytm/test-payment`
+      : 'https://securegw.paytm.in/theia/api/v1/showPaymentPage';
     
     const paymentData = {
       orderId: orderId,
       amount: amount,
-      bookingId: bookingId,  // Add this
-      bookingToken: booking.bookingToken,  // Add this
+      bookingId: bookingId,
+      bookingToken: booking.bookingToken,
       customerInfo: {
         custId: customerInfo?.email || booking.email,
         mobile: customerInfo?.phone || booking.phone,
         email: customerInfo?.email || booking.email
       },
+      // In production, generate actual checksum using Paytm SDK
       txnToken: `TXN_TOKEN_${Date.now()}`,
+      
+      // CRITICAL: Add paytmUrl to response
+      paytmUrl: paytmUrl,
+      
       paytmParams: {
         mid: merchantId,
         orderId: orderId,
@@ -168,13 +179,14 @@ router.post('/initiate', async (req, res) => {
     await booking.save();
     
     console.log('Booking updated with order ID:', orderId);
+    console.log('Payment URL:', paytmUrl);
 
     res.json({
       success: true,
       message: 'Payment initiated successfully',
       data: paymentData,
-      isTestMode: process.env.PAYTM_MODE === 'test',
-      note: process.env.PAYTM_MODE === 'test' ? 'Running in TEST mode. Integrate actual Paytm SDK for production.' : undefined
+      isTestMode: paytmMode === 'test',
+      note: paytmMode === 'test' ? 'Running in TEST mode. Integrate actual Paytm SDK for production.' : undefined
     });
 
   } catch (error) {
@@ -185,6 +197,210 @@ router.post('/initiate', async (req, res) => {
       error: error.message 
     });
   }
+});
+
+// @route   GET /api/paytm/test-payment
+// @desc    Test payment page for development
+// @access  Public
+router.get('/test-payment', (req, res) => {
+  const { orderId, amount, mid } = req.query;
+  const backendUrl = process.env.BACKEND_URL || 'https://srt-backend-a5m9.onrender.com';
+  
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Test Payment - Shree Ram Travels</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+        }
+        .container {
+          background: white;
+          border-radius: 20px;
+          padding: 40px;
+          max-width: 500px;
+          width: 100%;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+          color: #333;
+          margin-bottom: 10px;
+          font-size: 28px;
+        }
+        .test-badge {
+          display: inline-block;
+          background: #ffd700;
+          color: #333;
+          padding: 5px 15px;
+          border-radius: 20px;
+          font-size: 14px;
+          font-weight: bold;
+          margin-bottom: 30px;
+        }
+        .info {
+          background: #f8f9fa;
+          padding: 20px;
+          border-radius: 10px;
+          margin-bottom: 30px;
+        }
+        .info-row {
+          display: flex;
+          justify-content: space-between;
+          padding: 10px 0;
+          border-bottom: 1px solid #e0e0e0;
+        }
+        .info-row:last-child { border-bottom: none; }
+        .label { color: #666; font-size: 14px; }
+        .value { 
+          font-weight: 600; 
+          color: #333;
+          font-size: 16px;
+        }
+        .amount {
+          font-size: 24px;
+          color: #667eea;
+        }
+        .buttons {
+          display: flex;
+          gap: 15px;
+        }
+        button {
+          flex: 1;
+          padding: 15px;
+          border: none;
+          border-radius: 10px;
+          font-size: 16px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        .btn-success {
+          background: #10b981;
+          color: white;
+        }
+        .btn-success:hover {
+          background: #059669;
+          transform: translateY(-2px);
+          box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+        }
+        .btn-fail {
+          background: #ef4444;
+          color: white;
+        }
+        .btn-fail:hover {
+          background: #dc2626;
+          transform: translateY(-2px);
+          box-shadow: 0 5px 15px rgba(239, 68, 68, 0.4);
+        }
+        .note {
+          margin-top: 20px;
+          padding: 15px;
+          background: #fff3cd;
+          border-left: 4px solid #ffc107;
+          border-radius: 5px;
+          font-size: 14px;
+          color: #856404;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>🧪 Test Payment</h1>
+        <div class="test-badge">TESTING MODE</div>
+        
+        <div class="info">
+          <div class="info-row">
+            <span class="label">Order ID</span>
+            <span class="value">${orderId || 'N/A'}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Merchant ID</span>
+            <span class="value">${mid || 'N/A'}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Amount</span>
+            <span class="value amount">₹${amount || 'N/A'}</span>
+          </div>
+        </div>
+
+        <div class="buttons">
+          <button class="btn-success" onclick="simulateSuccess()">
+            ✅ Simulate Success
+          </button>
+          <button class="btn-fail" onclick="simulateFailure()">
+            ❌ Simulate Failure
+          </button>
+        </div>
+
+        <div class="note">
+          <strong>⚠️ Test Mode:</strong> This is a simulated payment page. 
+          Click either button to test success or failure flows.
+        </div>
+      </div>
+
+      <script>
+        function simulateSuccess() {
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = '${backendUrl}/api/paytm/callback';
+          
+          const params = {
+            ORDERID: '${orderId}',
+            TXNID: 'TXN_' + Date.now(),
+            STATUS: 'TXN_SUCCESS',
+            RESPCODE: '01',
+            RESPMSG: 'Txn Success'
+          };
+          
+          Object.keys(params).forEach(key => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = params[key];
+            form.appendChild(input);
+          });
+          
+          document.body.appendChild(form);
+          form.submit();
+        }
+
+        function simulateFailure() {
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = '${backendUrl}/api/paytm/callback';
+          
+          const params = {
+            ORDERID: '${orderId}',
+            TXNID: 'TXN_' + Date.now(),
+            STATUS: 'TXN_FAILURE',
+            RESPCODE: '141',
+            RESPMSG: 'Transaction failed'
+          };
+          
+          Object.keys(params).forEach(key => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = params[key];
+            form.appendChild(input);
+          });
+          
+          document.body.appendChild(form);
+          form.submit();
+        }
+      </script>
+    </body>
+    </html>
+  `);
 });
 
 // @route   POST /api/paytm/callback
@@ -230,22 +446,20 @@ router.post('/callback', async (req, res) => {
       
       console.log('Payment successful for booking:', booking.bookingToken);
 
-      return res.redirect(`${frontendUrl}/booking-success?token=${booking.bookingToken}`);
+      return res.redirect(`${frontendUrl}/payment.html?status=success&orderId=${ORDERID}&txnId=${TXNID}&bookingToken=${booking.bookingToken}`);
     } else {
       booking.status = 'cancelled';
       await booking.save();
       
       console.log('Payment failed for booking:', booking.bookingToken, 'Reason:', RESPMSG);
 
-      return res.redirect(`${frontendUrl}/booking-failed?reason=${encodeURIComponent(RESPMSG || 'Payment failed')}`);
+      return res.redirect(`${frontendUrl}/payment.html?status=failed&message=${encodeURIComponent(RESPMSG || 'Payment failed')}`);
     }
 
   } catch (error) {
     console.error('Error in payment callback:', error);
-    res.status(500).json({ 
-      message: 'Payment callback processing failed', 
-      error: error.message 
-    });
+    const frontendUrl = process.env.FRONTEND_URL || 'https://ramjibus.netlify.app';
+    return res.redirect(`${frontendUrl}/payment.html?status=error&message=${encodeURIComponent('Payment processing failed')}`);
   }
 });
 
