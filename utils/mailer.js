@@ -250,7 +250,7 @@ async function sendBookingConfirmation(booking, schedule) {
     const resend = new Resend(process.env.RESEND_API_KEY);
 
     const { data, error } = await resend.emails.send({
-      from:    'Shree Ram Travels <onboarding@resend.dev>',  // use this until you verify your domain
+      from:    'Shree Ram Travels <bookings@ramjibus.com>',  // use this until you verify your domain
       to:      [booking.email],
       subject: `✅ Booking Confirmed – ${booking.bookingToken} | Shree Ram Travels`,
       text:    buildTicketText(booking, schedule),
