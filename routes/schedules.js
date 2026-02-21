@@ -1,32 +1,22 @@
 const express = require('express');
-const router = express.Router();
+const router  = express.Router();
 const Schedule = require('../models/Schedule');
 
 // @route   GET /api/schedules
 // @desc    Get all schedules with optional filters
-// @access  Public
 router.get('/', async (req, res) => {
   try {
     const { origin, destination, date } = req.query;
     let query = {};
 
-    if (origin) {
-      query.origin = new RegExp(origin, 'i');
-    }
-
-    if (destination) {
-      query.destination = new RegExp(destination, 'i');
-    }
+    if (origin)      query.origin      = new RegExp(origin, 'i');
+    if (destination) query.destination = new RegExp(destination, 'i');
 
     if (date) {
       const searchDate = new Date(date);
-      const nextDay = new Date(searchDate);
+      const nextDay    = new Date(searchDate);
       nextDay.setDate(nextDay.getDate() + 1);
-      
-      query.departureTime = {
-        $gte: searchDate,
-        $lt: nextDay
-      };
+      query.departureTime = { $gte: searchDate, $lt: nextDay };
     }
 
     const schedules = await Schedule.find(query).sort({ departureTime: 1 });
@@ -38,21 +28,13 @@ router.get('/', async (req, res) => {
 });
 
 // @route   GET /api/schedules/cities
-// @desc    Get all unique cities (origins and destinations)
-// @access  Public
+// @desc    Get all unique cities
 router.get('/cities', async (req, res) => {
   try {
     const schedules = await Schedule.find({});
     const cities = new Set();
-    
-    schedules.forEach(schedule => {
-      cities.add(schedule.origin);
-      cities.add(schedule.destination);
-    });
-
-    res.json({
-      cities: Array.from(cities).sort()
-    });
+    schedules.forEach(s => { cities.add(s.origin); cities.add(s.destination); });
+    res.json({ cities: Array.from(cities).sort() });
   } catch (error) {
     console.error('Error fetching cities:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -61,15 +43,10 @@ router.get('/cities', async (req, res) => {
 
 // @route   GET /api/schedules/:id
 // @desc    Get single schedule by ID
-// @access  Public
 router.get('/:id', async (req, res) => {
   try {
     const schedule = await Schedule.findById(req.params.id);
-    
-    if (!schedule) {
-      return res.status(404).json({ message: 'Schedule not found' });
-    }
-
+    if (!schedule) return res.status(404).json({ message: 'Schedule not found' });
     res.json(schedule);
   } catch (error) {
     console.error('Error fetching schedule:', error);
@@ -79,24 +56,26 @@ router.get('/:id', async (req, res) => {
 
 // @route   POST /api/schedules
 // @desc    Create new schedule (Admin only)
-// @access  Private
 router.post('/', async (req, res) => {
   try {
-    const { busName, type, origin, destination, departureTime, arrivalTime, price } = req.body;
+    const {
+      busName, type, origin, destination,
+      pickupPoint, dropPoint,
+      durationHours, durationMins,
+      departureTime, arrivalTime, price
+    } = req.body;
 
-    // Validation
     if (!busName || !type || !origin || !destination || !departureTime || !arrivalTime || !price) {
       return res.status(400).json({ message: 'Please provide all required fields' });
     }
 
     const schedule = new Schedule({
-      busName,
-      type,
-      origin,
-      destination,
-      departureTime,
-      arrivalTime,
-      price,
+      busName, type, origin, destination,
+      pickupPoint:   pickupPoint   || '',
+      dropPoint:     dropPoint     || '',
+      durationHours: durationHours !== undefined ? Number(durationHours) : 0,
+      durationMins:  durationMins  !== undefined ? Number(durationMins)  : 0,
+      departureTime, arrivalTime, price,
       bookedSeats: []
     });
 
@@ -110,24 +89,29 @@ router.post('/', async (req, res) => {
 
 // @route   PUT /api/schedules/:id
 // @desc    Update schedule (Admin only)
-// @access  Private
 router.put('/:id', async (req, res) => {
   try {
-    const { busName, type, origin, destination, departureTime, arrivalTime, price } = req.body;
+    const {
+      busName, type, origin, destination,
+      pickupPoint, dropPoint,
+      durationHours, durationMins,
+      departureTime, arrivalTime, price
+    } = req.body;
 
     const schedule = await Schedule.findById(req.params.id);
+    if (!schedule) return res.status(404).json({ message: 'Schedule not found' });
 
-    if (!schedule) {
-      return res.status(404).json({ message: 'Schedule not found' });
-    }
-
-    schedule.busName = busName || schedule.busName;
-    schedule.type = type || schedule.type;
-    schedule.origin = origin || schedule.origin;
-    schedule.destination = destination || schedule.destination;
+    schedule.busName       = busName       || schedule.busName;
+    schedule.type          = type          || schedule.type;
+    schedule.origin        = origin        || schedule.origin;
+    schedule.destination   = destination   || schedule.destination;
+    schedule.pickupPoint   = pickupPoint   !== undefined ? pickupPoint             : schedule.pickupPoint;
+    schedule.dropPoint     = dropPoint     !== undefined ? dropPoint               : schedule.dropPoint;
+    schedule.durationHours = durationHours !== undefined ? Number(durationHours)   : schedule.durationHours;
+    schedule.durationMins  = durationMins  !== undefined ? Number(durationMins)    : schedule.durationMins;
     schedule.departureTime = departureTime || schedule.departureTime;
-    schedule.arrivalTime = arrivalTime || schedule.arrivalTime;
-    schedule.price = price || schedule.price;
+    schedule.arrivalTime   = arrivalTime   || schedule.arrivalTime;
+    schedule.price         = price         || schedule.price;
 
     const updatedSchedule = await schedule.save();
     res.json(updatedSchedule);
@@ -139,15 +123,10 @@ router.put('/:id', async (req, res) => {
 
 // @route   DELETE /api/schedules/:id
 // @desc    Delete schedule (Admin only)
-// @access  Private
 router.delete('/:id', async (req, res) => {
   try {
     const schedule = await Schedule.findById(req.params.id);
-
-    if (!schedule) {
-      return res.status(404).json({ message: 'Schedule not found' });
-    }
-
+    if (!schedule) return res.status(404).json({ message: 'Schedule not found' });
     await Schedule.findByIdAndDelete(req.params.id);
     res.json({ message: 'Schedule deleted successfully' });
   } catch (error) {
