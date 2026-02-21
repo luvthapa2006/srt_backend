@@ -28,6 +28,32 @@ const scheduleSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+
+  // ── NEW: Pick up & Drop points ──
+  pickupPoint: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  dropPoint: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+
+  // ── NEW: Journey duration ──
+  durationHours: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  durationMins: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 59
+  },
+
   departureTime: {
     type: Date,
     required: true
@@ -53,7 +79,6 @@ const scheduleSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Add index for faster queries
 scheduleSchema.index({ origin: 1, destination: 1, departureTime: 1 });
 
 module.exports = mongoose.model('Schedule', scheduleSchema);
