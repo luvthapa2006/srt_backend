@@ -162,7 +162,7 @@ function buildTicketHTML(booking, schedule) {
                       <li>Arrive at the boarding point <strong>15 minutes before</strong> departure</li>
                       <li>Carry a valid <strong>government-issued photo ID</strong> (Aadhaar/PAN/Passport)</li>
                       <li>Show this email or your <strong>booking token</strong> at boarding</li>
-                      <li>Pickup &amp; Office: <strong>New Shri Ram Travels, VPO Nathuawala, Dehradun, UK 248004</strong></li>
+                      <li>Pickup &amp; Office: <strong>Haridwar Bypass Rd, in front of Hotel Cygnett Paras, Niranjanpur, Majra, Dehradun 248171</strong></li>
                     </ul>
                   </td>
                 </tr>
@@ -174,19 +174,19 @@ function buildTicketHTML(booking, schedule) {
                   <td style="padding:18px 20px;">
                     <p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#3730a3;">📍 How to Find Us</p>
                     <p style="margin:0 0 10px;font-size:13px;color:#374151;line-height:1.7;">
-                      <strong>New Shri Ram Travels</strong><br>
-                      VPO Nathuawala, Dehradun, Uttarakhand 248004
+                      <strong>Haridwar Bypass Rd</strong><br>
+                      in front of Hotel Cygnett Paras, Niranjanpur, Majra, Dehradun 248171
                     </p>
                     <table cellpadding="0" cellspacing="0">
                       <tr>
                         <td>
-                          <a href="https://maps.google.com/maps?q=shree+ram+tours+and+travels+Dehradun&z=15"
+                          <a href="https://maps.google.com/maps?q=Haridwar+Bypass+Rd+Hotel+Cygnett+Paras+Niranjanpur+Majra+Dehradun&z=15"
                              style="display:inline-block;background:#4f46e5;color:white;text-decoration:none;padding:10px 20px;border-radius:7px;font-size:13px;font-weight:600;margin-right:8px;">
                             🗺️ Open in Google Maps
                           </a>
                         </td>
                         <td>
-                          <a href="https://maps.google.com/maps?q=shree+ram+tours+and+travels+Dehradun&z=15&dirflg=d"
+                          <a href="https://maps.google.com/maps?q=Haridwar+Bypass+Rd+Hotel+Cygnett+Paras+Niranjanpur+Majra+Dehradun&z=15&dirflg=d"
                              style="display:inline-block;background:white;color:#4f46e5;text-decoration:none;padding:10px 20px;border-radius:7px;font-size:13px;font-weight:600;border:1.5px solid #4f46e5;">
                             🧭 Get Directions
                           </a>
@@ -274,8 +274,8 @@ IMPORTANT:
 
 Track your booking: https://ramjibus.com
 Contact: mj732411@gmail.com | +91 98709 95956
-Address: New Shri Ram Travels, VPO Nathuawala, Dehradun, UK 248004
-Maps: https://maps.google.com/maps?q=shree+ram+tours+and+travels+Dehradun&z=15
+Address: Haridwar Bypass Rd, in front of Hotel Cygnett Paras, Niranjanpur, Majra, Dehradun 248171
+Maps: https://maps.google.com/maps?q=Haridwar+Bypass+Rd+Hotel+Cygnett+Paras+Niranjanpur+Majra+Dehradun&z=15
 
 © 2025 Shree Ram Travels
   `.trim();
