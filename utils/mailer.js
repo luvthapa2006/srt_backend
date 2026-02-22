@@ -180,13 +180,13 @@ function buildTicketHTML(booking, schedule) {
                     <table cellpadding="0" cellspacing="0">
                       <tr>
                         <td>
-                          <a href="https://maps.google.com/maps?q=Haridwar+Bypass+Rd+Hotel+Cygnett+Paras+Niranjanpur+Majra+Dehradun&z=15"
+                          <a href="https://maps.google.com/maps?q=shree+ram+tours+and+travels&z=15"
                              style="display:inline-block;background:#4f46e5;color:white;text-decoration:none;padding:10px 20px;border-radius:7px;font-size:13px;font-weight:600;margin-right:8px;">
                             🗺️ Open in Google Maps
                           </a>
                         </td>
                         <td>
-                          <a href="https://maps.google.com/maps?q=Haridwar+Bypass+Rd+Hotel+Cygnett+Paras+Niranjanpur+Majra+Dehradun&z=15&dirflg=d"
+                          <a href="https://maps.google.com/maps?q=shree+ram+tours+and+travels&z=15&dirflg=d"
                              style="display:inline-block;background:white;color:#4f46e5;text-decoration:none;padding:10px 20px;border-radius:7px;font-size:13px;font-weight:600;border:1.5px solid #4f46e5;">
                             🧭 Get Directions
                           </a>
@@ -275,7 +275,7 @@ IMPORTANT:
 Track your booking: https://ramjibus.com
 Contact: mj732411@gmail.com | +91 98709 95956
 Address: Haridwar Bypass Rd, in front of Hotel Cygnett Paras, Niranjanpur, Majra, Dehradun 248171
-Maps: https://maps.google.com/maps?q=Haridwar+Bypass+Rd+Hotel+Cygnett+Paras+Niranjanpur+Majra+Dehradun&z=15
+Maps: https://maps.google.com/maps?q=shree+ram+tours+and+travels&z=15
 
 © 2025 Shree Ram Travels
   `.trim();
