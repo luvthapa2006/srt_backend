@@ -154,7 +154,7 @@ function buildTicketHTML(booking, schedule) {
               </table>
 
               <!-- IMPORTANT NOTES -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;margin-bottom:28px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;margin-bottom:24px;">
                 <tr>
                   <td style="padding:16px 20px;">
                     <p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#92400e;">⚠️ Important Instructions</p>
@@ -162,8 +162,37 @@ function buildTicketHTML(booking, schedule) {
                       <li>Arrive at the boarding point <strong>15 minutes before</strong> departure</li>
                       <li>Carry a valid <strong>government-issued photo ID</strong> (Aadhaar/PAN/Passport)</li>
                       <li>Show this email or your <strong>booking token</strong> at boarding</li>
-                      <li>Boarding point: <strong>Haridwar Bypass Rd, Niranjanpur, Dehradun</strong></li>
+                      <li>Pickup &amp; Office: <strong>New Shri Ram Travels, VPO Nathuawala, Dehradun, UK 248004</strong></li>
                     </ul>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- FIND US / MAP -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4ff;border:1px solid #c7d2fe;border-radius:10px;margin-bottom:28px;">
+                <tr>
+                  <td style="padding:18px 20px;">
+                    <p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#3730a3;">📍 How to Find Us</p>
+                    <p style="margin:0 0 10px;font-size:13px;color:#374151;line-height:1.7;">
+                      <strong>New Shri Ram Travels</strong><br>
+                      VPO Nathuawala, Dehradun, Uttarakhand 248004
+                    </p>
+                    <table cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td>
+                          <a href="https://maps.google.com/maps?q=shree+ram+tours+and+travels+Dehradun&z=15"
+                             style="display:inline-block;background:#4f46e5;color:white;text-decoration:none;padding:10px 20px;border-radius:7px;font-size:13px;font-weight:600;margin-right:8px;">
+                            🗺️ Open in Google Maps
+                          </a>
+                        </td>
+                        <td>
+                          <a href="https://maps.google.com/maps?q=shree+ram+tours+and+travels+Dehradun&z=15&dirflg=d"
+                             style="display:inline-block;background:white;color:#4f46e5;text-decoration:none;padding:10px 20px;border-radius:7px;font-size:13px;font-weight:600;border:1.5px solid #4f46e5;">
+                            🧭 Get Directions
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
               </table>
@@ -191,7 +220,7 @@ function buildTicketHTML(booking, schedule) {
           <!-- FOOTER -->
           <tr>
             <td style="background:#1e293b;border-radius:0 0 16px 16px;padding:24px 40px;text-align:center;">
-              <p style="margin:0 0 6px;color:#94a3b8;font-size:12px;">📍 Haridwar Bypass Rd, in front of Hotel Cygnett Paras, Niranjanpur, Majra, Dehradun 248171</p>
+              <p style="margin:0 0 6px;color:#94a3b8;font-size:12px;">📍 New Shri Ram Travels, VPO Nathuawala, Dehradun, Uttarakhand 248004</p>
               <p style="margin:0 0 6px;color:#64748b;font-size:11px;">
                 <a href="mailto:mj732411@gmail.com" style="color:#667eea;text-decoration:none;">mj732411@gmail.com</a>
                 &nbsp;|&nbsp;
@@ -245,7 +274,8 @@ IMPORTANT:
 
 Track your booking: https://ramjibus.com
 Contact: mj732411@gmail.com | +91 98709 95956
-Address: Haridwar Bypass Rd, Niranjanpur, Majra, Dehradun 248171
+Address: New Shri Ram Travels, VPO Nathuawala, Dehradun, UK 248004
+Maps: https://maps.google.com/maps?q=shree+ram+tours+and+travels+Dehradun&z=15
 
 © 2025 Shree Ram Travels
   `.trim();
