@@ -10,12 +10,8 @@ const scheduleSchema = new mongoose.Schema({
     type: String,
     required: true,
     enum: [
-      'AC Sleeper (2+1)',
-      'AC Sleeper (1+1)',
-      'Non-AC Sleeper (2+1)',
-      'AC Seater (2+2)',
-      'AC Seater (2+1)',
-      'Non-AC Seater (2+2)'
+      'AC Sleeper (36)',
+      'AC Seater+Sleeper (8+32)'
     ]
   },
   origin: {
