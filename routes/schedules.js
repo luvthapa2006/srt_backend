@@ -231,6 +231,10 @@ router.post('/', async (req, res) => {
         // Construct the departure time explicitly in IST (UTC+5:30) so the
         // stored UTC value is correct regardless of the server's local timezone.
         const depDate = new Date(`${dateStr}T${busTime}:00.000+05:30`);
+        console.log(`[DEBUG] dateStr=${dateStr} busTime=${busTime}`);
+        console.log(`[DEBUG] depDate ISO = ${depDate.toISOString()}  (should be busTime - 5:30)`);
+        console.log(`[DEBUG] depDate IST = ${depDate.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Kolkata'})}  (should match busTime)`);
+        console.log(`[DEBUG] Server TZ offset = ${new Date().getTimezoneOffset()} mins (0 = UTC, -330 = IST)`);
 
         const dh = durationHours !== undefined ? Number(durationHours) : 0;
         const dm = durationMins  !== undefined ? Number(durationMins)  : 0;
