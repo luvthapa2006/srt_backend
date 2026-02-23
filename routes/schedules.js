@@ -206,7 +206,8 @@ router.post('/', async (req, res) => {
       pickupPoint, dropPoint,
       durationHours, durationMins,
       departureTime, arrivalTime, price,
-      busDates, busTime
+      busDates, busTime,
+      scheduleMode, rangeStart, rangeEnd, daysOfWeek
     } = req.body;
 
     if (!busName || !type || !origin || !destination || !price) {
