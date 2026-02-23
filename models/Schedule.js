@@ -74,7 +74,13 @@ const scheduleSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
-  }
+  },
+  // Schedule mode: 'daterange' | 'daysofweek' | 'specific'
+  scheduleMode: { type: String, default: 'specific' },
+  rangeStart:   { type: String, default: '' },
+  rangeEnd:     { type: String, default: '' },
+  daysOfWeek:   [{ type: Number }],   // 1=Mon…7=Sun
+  cancelledDates: [{ type: String }]  // ISO date strings that are cancelled e.g. ['2026-02-25']
 }, {
   timestamps: true
 });

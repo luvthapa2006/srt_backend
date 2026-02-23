@@ -16,33 +16,79 @@ const Schedule = require('../models/Schedule');
 function resolveSchedule(schedule) {
   const now = new Date();
   const dep = new Date(schedule.departureTime);
+  const cancelled = schedule.cancelledDates || [];
 
-  // Still in the future — show normally
-  if (dep > now) return schedule;
-
-  // Past and recurring (isActive = true) → roll to next future occurrence (same time, next day+)
-  if (schedule.isActive) {
-    const arr     = new Date(schedule.arrivalTime);
-    const tripMs  = arr - dep;           // journey duration in ms
-    const diffMs  = now - dep;           // how far past the original departure
-    const daysBack = Math.floor(diffMs / (24 * 60 * 60 * 1000)) + 1; // days to add
-
-    const newDep = new Date(dep.getTime() + daysBack * 24 * 60 * 60 * 1000);
-    const newArr = new Date(newDep.getTime() + tripMs);
-
-    // Return a plain object (not saved) with updated times
-    const obj = schedule.toObject ? schedule.toObject() : { ...schedule };
-    return {
-      ...obj,
-      id: obj._id || obj.id,
-      departureTime: newDep,
-      arrivalTime:   newArr,
-      bookedSeats:   [],          // fresh day → no booked seats
-      _isRecurring:  true         // flag so front-end knows
-    };
+  // Helper: check if a date string is cancelled
+  function isCancelledDate(d) {
+    const ds = d.toISOString().split('T')[0];
+    return cancelled.includes(ds);
   }
 
-  // Past and NOT recurring → exclude
+  // For daterange / daysofweek schedules, generate the NEXT valid upcoming departure
+  if (schedule.scheduleMode === 'daterange' || schedule.scheduleMode === 'daysofweek') {
+    const arr    = new Date(schedule.arrivalTime);
+    const tripMs = arr - dep;
+    const depHours = dep.getHours(), depMins = dep.getMinutes();
+
+    // Scan forward from today to find next valid, non-cancelled occurrence
+    let candidate = new Date(now);
+    candidate.setHours(depHours, depMins, 0, 0);
+    if (candidate <= now) candidate.setDate(candidate.getDate() + 1); // start tomorrow if today's time passed
+
+    const rangeEnd = schedule.rangeEnd ? new Date(schedule.rangeEnd + 'T23:59:59') : new Date(now.getTime() + 365 * 86400000);
+
+    for (let i = 0; i < 60; i++) {
+      const ds = candidate.toISOString().split('T')[0];
+      if (candidate > rangeEnd) return null; // past end of range
+
+      let valid = false;
+      if (schedule.scheduleMode === 'daterange') {
+        const rangeStart = schedule.rangeStart ? new Date(schedule.rangeStart) : dep;
+        valid = candidate >= rangeStart;
+      } else if (schedule.scheduleMode === 'daysofweek') {
+        const dow = candidate.getDay() || 7;
+        valid = (schedule.daysOfWeek || []).includes(dow);
+      }
+
+      if (valid && !cancelled.includes(ds)) {
+        const newDep = new Date(candidate);
+        const newArr = new Date(newDep.getTime() + tripMs);
+        const obj = schedule.toObject ? schedule.toObject() : { ...schedule };
+        return { ...obj, id: obj._id || obj.id, departureTime: newDep, arrivalTime: newArr, bookedSeats: [], _isRecurring: true };
+      }
+      candidate.setDate(candidate.getDate() + 1);
+    }
+    return null;
+  }
+
+  // Legacy / specific-dates schedule
+  if (dep > now) {
+    if (isCancelledDate(dep)) return null;
+    return schedule;
+  }
+
+  // Past and recurring (isActive = true) → roll forward
+  if (schedule.isActive) {
+    const arr     = new Date(schedule.arrivalTime);
+    const tripMs  = arr - dep;
+    const diffMs  = now - dep;
+    const daysBack = Math.floor(diffMs / (24 * 60 * 60 * 1000)) + 1;
+
+    let newDep = new Date(dep.getTime() + daysBack * 24 * 60 * 60 * 1000);
+    let newArr = new Date(newDep.getTime() + tripMs);
+
+    // Skip cancelled dates
+    for (let i = 0; i < 30; i++) {
+      const ds = newDep.toISOString().split('T')[0];
+      if (!cancelled.includes(ds)) break;
+      newDep.setDate(newDep.getDate() + 1);
+      newArr = new Date(newDep.getTime() + tripMs);
+    }
+
+    const obj = schedule.toObject ? schedule.toObject() : { ...schedule };
+    return { ...obj, id: obj._id || obj.id, departureTime: newDep, arrivalTime: newArr, bookedSeats: [], _isRecurring: true };
+  }
+
   return null;
 }
 
@@ -186,7 +232,11 @@ router.post('/', async (req, res) => {
           durationHours: dh, durationMins: dm,
           departureTime: depDate,
           arrivalTime:   arrDate,
-          price, bookedSeats: [], isActive: true
+          price, bookedSeats: [], isActive: true,
+          scheduleMode: scheduleMode || 'specific',
+          rangeStart:   rangeStart   || '',
+          rangeEnd:     rangeEnd     || '',
+          daysOfWeek:   daysOfWeek   || []
         });
         const saved = await schedule.save();
         created.push({ ...saved.toObject(), id: saved._id });
@@ -256,6 +306,26 @@ router.patch('/:id/toggle-active', async (req, res) => {
     schedule.isActive = !schedule.isActive;
     await schedule.save();
     res.json({ id: schedule._id, isActive: schedule.isActive });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   PATCH /api/schedules/:id/cancel-dates
+// @desc    Cancel specific dates on a recurring route (add to cancelledDates array)
+router.patch('/:id/cancel-dates', async (req, res) => {
+  try {
+    const { dates } = req.body;  // array of 'YYYY-MM-DD' strings
+    if (!dates || !Array.isArray(dates) || dates.length === 0) {
+      return res.status(400).json({ message: 'Provide an array of dates to cancel' });
+    }
+    const schedule = await Schedule.findById(req.params.id);
+    if (!schedule) return res.status(404).json({ message: 'Schedule not found' });
+    // Merge with existing cancelled dates, deduplicate
+    const existing = schedule.cancelledDates || [];
+    schedule.cancelledDates = [...new Set([...existing, ...dates])];
+    await schedule.save();
+    res.json({ id: schedule._id, cancelledDates: schedule.cancelledDates });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
