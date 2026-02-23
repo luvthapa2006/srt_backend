@@ -70,6 +70,10 @@ const scheduleSchema = new mongoose.Schema({
   totalSeats: {
     type: Number,
     default: 40
+  },
+  isActive: {
+    type: Boolean,
+    default: true
   }
 }, {
   timestamps: true

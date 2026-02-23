@@ -20,11 +20,13 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 const scheduleRoutes = require('./routes/schedules');
 const bookingRoutes  = require('./routes/bookings');
-const cashfreeRoutes = require('./routes/cashfree');   // ← replaces paytm
+const cashfreeRoutes = require('./routes/cashfree');
+const couponRoutes   = require('./routes/coupons');
 
 app.use('/api/schedules', scheduleRoutes);
 app.use('/api/bookings',  bookingRoutes);
-app.use('/api/cashfree',  cashfreeRoutes);             // ← replaces /api/paytm
+app.use('/api/cashfree',  cashfreeRoutes);
+app.use('/api/coupons',   couponRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

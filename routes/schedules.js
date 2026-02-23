@@ -28,7 +28,7 @@ router.get('/', async (req, res) => {
 });
 
 // @route   GET /api/schedules/cities
-// @desc    Get all unique cities
+// @desc    Get all unique cities (both origins and destinations combined)
 router.get('/cities', async (req, res) => {
   try {
     const schedules = await Schedule.find({});
@@ -37,6 +37,34 @@ router.get('/cities', async (req, res) => {
     res.json({ cities: Array.from(cities).sort() });
   } catch (error) {
     console.error('Error fetching cities:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   GET /api/schedules/origins
+// @desc    Get all unique origin cities
+router.get('/origins', async (req, res) => {
+  try {
+    const schedules = await Schedule.find({});
+    const origins = new Set();
+    schedules.forEach(s => { origins.add(s.origin); });
+    res.json({ cities: Array.from(origins).sort() });
+  } catch (error) {
+    console.error('Error fetching origins:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   GET /api/schedules/destinations
+// @desc    Get all unique destination cities
+router.get('/destinations', async (req, res) => {
+  try {
+    const schedules = await Schedule.find({});
+    const destinations = new Set();
+    schedules.forEach(s => { destinations.add(s.destination); });
+    res.json({ cities: Array.from(destinations).sort() });
+  } catch (error) {
+    console.error('Error fetching destinations:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -55,18 +83,54 @@ router.get('/:id', async (req, res) => {
 });
 
 // @route   POST /api/schedules
-// @desc    Create new schedule (Admin only)
+// @desc    Create new schedule(s) (Admin only) - supports multiple dates
 router.post('/', async (req, res) => {
   try {
     const {
       busName, type, origin, destination,
       pickupPoint, dropPoint,
       durationHours, durationMins,
-      departureTime, arrivalTime, price
+      departureTime, arrivalTime, price,
+      busDates, busTime  // new: busDates = array of date strings, busTime = HH:mm
     } = req.body;
 
-    if (!busName || !type || !origin || !destination || !departureTime || !arrivalTime || !price) {
+    if (!busName || !type || !origin || !destination || !price) {
       return res.status(400).json({ message: 'Please provide all required fields' });
+    }
+
+    // Multi-date support: if busDates array provided, create one schedule per date
+    if (busDates && Array.isArray(busDates) && busDates.length > 0 && busTime) {
+      const created = [];
+      for (const dateStr of busDates) {
+        const [hours, minutes] = busTime.split(':').map(Number);
+        const depDate = new Date(dateStr);
+        depDate.setHours(hours, minutes, 0, 0);
+        
+        const dh = durationHours !== undefined ? Number(durationHours) : 0;
+        const dm = durationMins  !== undefined ? Number(durationMins)  : 0;
+        const arrDate = new Date(depDate.getTime() + (dh * 60 + dm) * 60000);
+
+        const schedule = new Schedule({
+          busName, type, origin, destination,
+          pickupPoint:   pickupPoint   || '',
+          dropPoint:     dropPoint     || '',
+          durationHours: dh,
+          durationMins:  dm,
+          departureTime: depDate,
+          arrivalTime:   arrDate,
+          price,
+          bookedSeats: [],
+          isActive: true
+        });
+        const saved = await schedule.save();
+        created.push({ ...saved.toObject(), id: saved._id });
+      }
+      return res.status(201).json({ created, count: created.length });
+    }
+
+    // Single schedule (legacy)
+    if (!departureTime || !arrivalTime) {
+      return res.status(400).json({ message: 'Please provide departureTime and arrivalTime' });
     }
 
     const schedule = new Schedule({
@@ -76,7 +140,8 @@ router.post('/', async (req, res) => {
       durationHours: durationHours !== undefined ? Number(durationHours) : 0,
       durationMins:  durationMins  !== undefined ? Number(durationMins)  : 0,
       departureTime, arrivalTime, price,
-      bookedSeats: []
+      bookedSeats: [],
+      isActive: true
     });
 
     const savedSchedule = await schedule.save();
@@ -117,6 +182,20 @@ router.put('/:id', async (req, res) => {
     res.json(updatedSchedule);
   } catch (error) {
     console.error('Error updating schedule:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   PATCH /api/schedules/:id/toggle-active
+// @desc    Toggle bus active/inactive status
+router.patch('/:id/toggle-active', async (req, res) => {
+  try {
+    const schedule = await Schedule.findById(req.params.id);
+    if (!schedule) return res.status(404).json({ message: 'Schedule not found' });
+    schedule.isActive = !schedule.isActive;
+    await schedule.save();
+    res.json({ id: schedule._id, isActive: schedule.isActive });
+  } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
