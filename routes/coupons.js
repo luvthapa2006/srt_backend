@@ -126,4 +126,8 @@ router.post('/use', async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
 module.exports = router;
+=======
+module.exports = router;
+>>>>>>> 213ef00 (Few chnages  Commit)
