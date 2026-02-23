@@ -217,9 +217,9 @@ router.post('/', async (req, res) => {
     if (busDates && Array.isArray(busDates) && busDates.length > 0 && busTime) {
       const created = [];
       for (const dateStr of busDates) {
-        const [hours, minutes] = busTime.split(':').map(Number);
-        const depDate = new Date(dateStr);
-        depDate.setHours(hours, minutes, 0, 0);
+        // Construct the departure time explicitly in IST (UTC+5:30) so the
+        // stored UTC value is correct regardless of the server's local timezone.
+        const depDate = new Date(`${dateStr}T${busTime}:00.000+05:30`);
 
         const dh = durationHours !== undefined ? Number(durationHours) : 0;
         const dm = durationMins  !== undefined ? Number(durationMins)  : 0;
