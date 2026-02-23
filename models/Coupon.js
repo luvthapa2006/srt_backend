@@ -47,8 +47,4 @@ const couponSchema = new mongoose.Schema({
   timestamps: true
 });
 
-<<<<<<< HEAD
 module.exports = mongoose.model('Coupon', couponSchema);
-=======
-module.exports = mongoose.model('Coupon', couponSchema);
->>>>>>> 213ef00 (Few chnages  Commit)
