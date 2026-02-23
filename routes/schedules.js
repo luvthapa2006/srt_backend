@@ -18,35 +18,46 @@ function resolveSchedule(schedule) {
   const dep = new Date(schedule.departureTime);
   const cancelled = schedule.cancelledDates || [];
 
-  // Helper: check if a date string is cancelled
+  // Helper: get IST YYYY-MM-DD string from a UTC Date (avoids server TZ dependency)
+  function toISTDateStr(d) {
+    return new Date(d.getTime() + 330 * 60 * 1000).toISOString().split('T')[0];
+  }
+
+  // Helper: check if a date is cancelled (using IST date string)
   function isCancelledDate(d) {
-    const ds = d.toISOString().split('T')[0];
-    return cancelled.includes(ds);
+    return cancelled.includes(toISTDateStr(d));
   }
 
   // For daterange / daysofweek schedules, generate the NEXT valid upcoming departure
   if (schedule.scheduleMode === 'daterange' || schedule.scheduleMode === 'daysofweek') {
     const arr    = new Date(schedule.arrivalTime);
     const tripMs = arr - dep;
-    const depHours = dep.getHours(), depMins = dep.getMinutes();
+    // Use getUTCHours/getUTCMinutes so the time-of-day is read correctly
+    // regardless of the server's local timezone (server may be UTC, IST, etc.)
+    const depHours = dep.getUTCHours(), depMins = dep.getUTCMinutes();
 
     // Scan forward from today to find next valid, non-cancelled occurrence
+    // Use UTC methods so we never depend on server local timezone
     let candidate = new Date(now);
-    candidate.setHours(depHours, depMins, 0, 0);
-    if (candidate <= now) candidate.setDate(candidate.getDate() + 1); // start tomorrow if today's time passed
+    candidate.setUTCHours(depHours, depMins, 0, 0);
+    if (candidate <= now) candidate.setUTCDate(candidate.getUTCDate() + 1); // start tomorrow if today's time passed
 
-    const rangeEnd = schedule.rangeEnd ? new Date(schedule.rangeEnd + 'T23:59:59') : new Date(now.getTime() + 365 * 86400000);
+    // rangeEnd stored as 'YYYY-MM-DD' in IST — treat as end of that IST day (= 18:29:59 UTC next day)
+    const rangeEnd = schedule.rangeEnd ? new Date(schedule.rangeEnd + 'T18:29:59.000Z') : new Date(now.getTime() + 365 * 86400000);
 
     for (let i = 0; i < 60; i++) {
-      const ds = candidate.toISOString().split('T')[0];
+      // Derive IST date string for cancellation check (UTC+5:30 = +330 min)
+      const istMs = candidate.getTime() + 330 * 60 * 1000;
+      const ds = new Date(istMs).toISOString().split('T')[0];
       if (candidate > rangeEnd) return null; // past end of range
 
       let valid = false;
       if (schedule.scheduleMode === 'daterange') {
-        const rangeStart = schedule.rangeStart ? new Date(schedule.rangeStart) : dep;
+        const rangeStart = schedule.rangeStart ? new Date(schedule.rangeStart + 'T00:00:00.000+05:30') : dep;
         valid = candidate >= rangeStart;
       } else if (schedule.scheduleMode === 'daysofweek') {
-        const dow = candidate.getDay() || 7;
+        // Get day-of-week in IST
+        const dow = new Date(istMs).getUTCDay() || 7;
         valid = (schedule.daysOfWeek || []).includes(dow);
       }
 
@@ -56,7 +67,7 @@ function resolveSchedule(schedule) {
         const obj = schedule.toObject ? schedule.toObject() : { ...schedule };
         return { ...obj, id: obj._id || obj.id, departureTime: newDep, arrivalTime: newArr, bookedSeats: [], _isRecurring: true };
       }
-      candidate.setDate(candidate.getDate() + 1);
+      candidate.setUTCDate(candidate.getUTCDate() + 1);
     }
     return null;
   }
@@ -77,11 +88,10 @@ function resolveSchedule(schedule) {
     let newDep = new Date(dep.getTime() + daysBack * 24 * 60 * 60 * 1000);
     let newArr = new Date(newDep.getTime() + tripMs);
 
-    // Skip cancelled dates
+    // Skip cancelled dates (use IST date string, not UTC)
     for (let i = 0; i < 30; i++) {
-      const ds = newDep.toISOString().split('T')[0];
-      if (!cancelled.includes(ds)) break;
-      newDep.setDate(newDep.getDate() + 1);
+      if (!cancelled.includes(toISTDateStr(newDep))) break;
+      newDep = new Date(newDep.getTime() + 24 * 60 * 60 * 1000);
       newArr = new Date(newDep.getTime() + tripMs);
     }
 
@@ -108,25 +118,25 @@ router.get('/', async (req, res) => {
     //     then resolve them — their effective date might be the searched date
     let schedules;
     if (date) {
-      const searchDate = new Date(date);
-      const nextDay    = new Date(searchDate);
-      nextDay.setDate(nextDay.getDate() + 1);
+      // 'date' is YYYY-MM-DD in IST. Convert to UTC boundaries for MongoDB query.
+      const dayStart = new Date(date + 'T00:00:00.000+05:30'); // IST midnight → UTC
+      const dayEnd   = new Date(date + 'T23:59:59.999+05:30'); // IST 23:59:59 → UTC
 
-      // Fixed schedules on this date
-      const fixedQuery = { ...query, departureTime: { $gte: searchDate, $lt: nextDay } };
+      // Fixed schedules on this IST date
+      const fixedQuery = { ...query, departureTime: { $gte: dayStart, $lte: dayEnd } };
       const fixedSchedules = await Schedule.find(fixedQuery).sort({ departureTime: 1 });
 
       // Recurring schedules (isActive=true) — could land on searched date after rolling
       const recurringQuery = { ...query, isActive: true };
       const recurringSchedules = await Schedule.find(recurringQuery).sort({ departureTime: 1 });
 
-      // Resolve recurring → check if their rolled date matches the searched date
+      // Resolve recurring → check if their rolled IST date matches the searched date
       const resolvedRecurring = recurringSchedules
         .map(resolveSchedule)
         .filter(s => {
           if (!s || !s._isRecurring) return false;
           const d = new Date(s.departureTime);
-          return d >= searchDate && d < nextDay;
+          return d >= dayStart && d <= dayEnd;
         });
 
       // Merge, deduplicate by id
