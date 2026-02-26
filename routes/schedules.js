@@ -139,10 +139,16 @@ router.get('/', async (req, res) => {
           return d >= dayStart && d <= dayEnd;
         });
 
-      // Merge, deduplicate by id
+      // Merge, deduplicate by id (normalize IDs to string to handle ObjectId vs string mismatch)
       const seen = new Set();
       schedules = [];
-      for (const s of [...fixedSchedules, ...resolvedRecurring]) {
+      // Fixed schedules take priority — add them first
+      for (const s of fixedSchedules) {
+        const id = String(s._id || s.id);
+        if (!seen.has(id)) { seen.add(id); schedules.push(s); }
+      }
+      // Only add recurring results whose ID was NOT already covered by a fixed schedule
+      for (const s of resolvedRecurring) {
         const id = String(s._id || s.id);
         if (!seen.has(id)) { seen.add(id); schedules.push(s); }
       }
