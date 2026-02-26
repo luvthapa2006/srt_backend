@@ -246,6 +246,13 @@ router.post('/', async (req, res) => {
         const dm = durationMins  !== undefined ? Number(durationMins)  : 0;
         const arrDate = new Date(depDate.getTime() + (dh * 60 + dm) * 60000);
 
+        // Skip if identical schedule already exists (prevent duplicates)
+        const existingCount = await Schedule.countDocuments({ busName, origin, destination, departureTime: depDate });
+        if (existingCount > 0) {
+          console.log(`[SKIP] Duplicate for ${dateStr} at ${busTime} already exists`);
+          continue;
+        }
+
         const schedule = new Schedule({
           busName, type, origin, destination,
           pickupPoint: pickupPoint || '',
