@@ -97,8 +97,8 @@ router.put('/:id', async (req, res) => {
     if (description !== undefined) coupon.description = description;
     if (discountType !== undefined) coupon.discountType = discountType;
     if (discountValue !== undefined) coupon.discountValue = Number(discountValue);
-    if (startDate !== undefined) coupon.startDate = new Date(startDate);
-    if (endDate !== undefined) coupon.endDate = new Date(endDate);
+    if (startDate !== undefined) coupon.startDate = new Date(startDate + 'T00:00:00.000+05:30');
+    if (endDate !== undefined) coupon.endDate = new Date(endDate + 'T23:59:59.000+05:30');
     if (isActive !== undefined) coupon.isActive = isActive;
     if (maxUsage !== undefined) coupon.maxUsage = maxUsage ? Number(maxUsage) : null;
 
