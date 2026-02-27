@@ -5,6 +5,12 @@ const Coupon = require('../models/Coupon');
 // GET all coupons (admin)
 router.get('/', async (req, res) => {
   try {
+    const now = new Date();
+    // Auto-deactivate any coupons whose endDate has passed but are still marked active
+    await Coupon.updateMany(
+      { isActive: true, endDate: { $lt: now } },
+      { $set: { isActive: false } }
+    );
     const coupons = await Coupon.find({}).sort({ createdAt: -1 });
     res.json(coupons);
   } catch (error) {
@@ -24,7 +30,11 @@ router.post('/validate', async (req, res) => {
 
     const now = new Date();
     if (now < coupon.startDate) return res.status(400).json({ message: 'Coupon is not yet valid' });
-    if (now > coupon.endDate) return res.status(400).json({ message: 'Coupon has expired' });
+    if (now > coupon.endDate) {
+      // Auto-deactivate expired coupon
+      await Coupon.findByIdAndUpdate(coupon._id, { $set: { isActive: false } });
+      return res.status(400).json({ message: 'Coupon has expired' });
+    }
     if (coupon.maxUsage !== null && coupon.usageCount >= coupon.maxUsage) {
       return res.status(400).json({ message: 'Coupon usage limit reached' });
     }
